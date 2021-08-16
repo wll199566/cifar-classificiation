@@ -224,7 +224,7 @@ if __name__ == "__main__":
     # criterion
     criterion = nn.CrossEntropyLoss(reduction="sum")
     # optimizer
-    optimizer = optim.SGD(model.parameters(), lr=args.lr, momentum=args.momentum)
+    optimizer = optim.SGD(model.parameters(), lr=args.lr, momentum=args.momentum, weight_decay=args.weight_decay)
     # scheduler
     scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='max', factor=0.1, patience=5, verbose=True)
 
