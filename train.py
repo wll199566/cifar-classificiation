@@ -110,9 +110,10 @@ def train_valid(args, data_loader:tuple, device, model, criterion, optimizer, sc
             optimizer.step()
             # update loss and correct counts
             train_total_loss += train_loss.item()
-            train_total_correct += torch.sum(torch.argmax(preds, dim=1) == labels).item()
+            train_correct = torch.sum(torch.argmax(preds, dim=1) == labels).item()
+            train_total_correct += train_correct
             if args.verbose:
-                logging.info(f"epoch {epoch} | batch {batch} | train_loss: {train_loss.item()}")   
+                logging.info(f"epoch {epoch} | batch {batch} | train_loss: {train_loss.item()/len(img)} | train_acc: {train_correct/len(img)}")   
         # logging loss and accuracy
         train_avg_loss = train_total_loss/len(data_loader[0].dataset)
         train_acc = train_total_correct/len(data_loader[0].dataset)
