@@ -25,7 +25,7 @@ def check_init_loss(model, criterion, loader, device, num_class):
     # here, we try to feed the model with only one batch of data 
     model.train()
     model.zero_grad()
-    imgs, labels = next(iter(train_loader))
+    imgs, labels = next(iter(loader))
     imgs, labels = imgs.to(device), labels.to(device)
     # compute the init loss
     preds = model(imgs)
@@ -39,7 +39,31 @@ def check_init_loss(model, criterion, loader, device, num_class):
     # a correct model and initialization should make these two close to each other.
 
 
+# check 2: if the model can overfit 2 samples
+def overfit_small_data(num_epoch, model, criterion, loader, device, optimizer):
+    model.train()
+    # get the training samples (first 2 training samples)
+    imgs, labels = next(iter(loader))
+    imgs, labels = imgs[:2,...].to(device), labels[:2,...].to(device)
+    # begin our training
+    for epoch in range(1, num_epoch+1):
+        model.zero_grad()
+        # forward pass
+        preds = model(imgs)
+        loss = criterion(preds, labels)
+        # backward pass
+        loss.backward()
+        optimizer.step()
+        # compute train loss and train acc
+        train_loss = loss.item()
+        train_acc = torch.sum(torch.argmax(preds, dim=1) == labels).item()
+        print(f"epoch: {epoch} | train_loss: {train_loss/len(imgs)} | train_acc: {train_acc/len(imgs)}")
+        
 
+# check 3: (1) if the training loss can decrease with the full training data
+# (2) if the adding 
+# we can check for only a few epoches for a quick check
+#def check_loss_dec(epoch, model, criterion, loader, device, optimizer)
 
 if __name__ == "__main__":
     ### Configuration ###
@@ -50,6 +74,8 @@ if __name__ == "__main__":
     N_block = 3
     class_weight = None  # used to define the loss function and compute the loss of a random classifier
     n_class = 5  # how many classes in the labels
+    n_epoch = 30  # used for decreasing loss and ovefitting small data
+    learn_rate = 0.01
 
     ### reproducibility ###
     # https://pytorch.org/docs/stable/notes/randomness.html
@@ -80,8 +106,14 @@ if __name__ == "__main__":
     model.to(device)
     # criterion
     criterion = nn.CrossEntropyLoss(weight=class_weight, reduction="sum")
+    # optimizer
+    optimizer = optim.SGD(model.parameters(), lr=learn_rate)
     
-    # check 1: correct loss
-    check_init_loss(model, criterion, train_loader, device, n_class)
+    ### Sanity Check ###
+    ### check 1: correct loss ###
+    #check_init_loss(model, criterion, train_loader, device, n_class)
+
+    ### check 2: overfit_small_data ###
+    overfit_small_data(n_epoch, model, criterion, train_loader, device, optimizer)
         
 
