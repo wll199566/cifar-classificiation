@@ -38,8 +38,37 @@ def check_init_loss(model, criterion, loader, device, num_class):
     print(f"random classifier: {random_loss/len(imgs):.6f} | model: {train_loss/len(imgs):.6f}")
     # a correct model and initialization should make these two close to each other.
 
+# check 2: 
+# (1) if the training loss is increasing with the full training data with increasing regularization
+# ==> if yes, then the model is underfitting
+# But note if the loss is becoming NaN, then the learning rate might be too large
+# (2) if the training loss can decrease with the full training data with increasing model capacity
+# ==> if yes, then our model is not underfitting
+# we can check for only a few epoches for a quick check
+def check_loss_dec(model, criterion, loader, device, optimizer):
+    model.train()
+    for epoch in range(1, 11):
+        print(f"Epoch {epoch}")
+        epoch_loss = 0
+        for batch, (imgs, labels) in enumerate(loader, 1):
+            model.zero_grad()
+            imgs, labels = imgs.to(device), labels.to(device)
+            # forward pass
+            preds = model(imgs)
+            batch_loss = criterion(preds, labels)
+            # backward pass
+            batch_loss.backward()
+            optimizer.step()
+            
+            epoch_loss += batch_loss.item()
+            if batch % 10 == 0:
+                print(f"epoch{epoch} | batch{batch} | batch loss: {batch_loss/len(imgs)}")
+        
+        print(f"epoch loss: {epoch_loss/len(loader.dataset)}")    
+        print("-"*100 + "\n")       
+        
 
-# check 2: if the model can overfit 2 samples
+# check 3: if the model has enough capacity to overfit 2 samples (zero loss)
 def overfit_small_data(num_epoch, model, criterion, loader, device, optimizer):
     model.train()
     # get the training samples (first 2 training samples)
@@ -60,11 +89,6 @@ def overfit_small_data(num_epoch, model, criterion, loader, device, optimizer):
         print(f"epoch: {epoch} | train_loss: {train_loss/len(imgs)} | train_acc: {train_acc/len(imgs)}")
         
 
-# check 3: (1) if the training loss can decrease with the full training data
-# (2) if the adding 
-# we can check for only a few epoches for a quick check
-#def check_loss_dec(epoch, model, criterion, loader, device, optimizer)
-
 if __name__ == "__main__":
     ### Configuration ###
     seed = 1234
@@ -75,7 +99,7 @@ if __name__ == "__main__":
     class_weight = None  # used to define the loss function and compute the loss of a random classifier
     n_class = 5  # how many classes in the labels
     n_epoch = 30  # used for decreasing loss and ovefitting small data
-    learn_rate = 0.01
+    learn_rate = 0.001
 
     ### reproducibility ###
     # https://pytorch.org/docs/stable/notes/randomness.html
@@ -113,7 +137,10 @@ if __name__ == "__main__":
     ### check 1: correct loss ###
     #check_init_loss(model, criterion, train_loader, device, n_class)
 
-    ### check 2: overfit_small_data ###
-    overfit_small_data(n_epoch, model, criterion, train_loader, device, optimizer)
+    ### check 2: check if loss can decrease ###
+    check_loss_dec(model, criterion, train_loader, device, optimizer)
+
+    ### check 3: overfit_small_data ###
+    #overfit_small_data(n_epoch, model, criterion, train_loader, device, optimizer)
         
 
