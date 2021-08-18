@@ -97,7 +97,7 @@ def train_valid(args, data_loader:tuple, device, model, criterion, optimizer, sc
         train_total_loss = 0  # total loss of every epoch (not average)
         train_total_correct = 0  # total correct predictions every epoch
         train_start_time = time.time()  # record train start time
-        for batch, (imgs, labels) in enumerate(data_loader[0]):
+        for batch, (imgs, labels) in enumerate(data_loader[0], 1):
             # clean up the buffered gradients
             model.zero_grad()
             # put data into device
