@@ -146,8 +146,8 @@ def train_valid(args, data_loader:tuple, device, model, criterion, optimizer, sc
         logging.info(f"valid avg loss: {valid_avg_loss:.3f} \
                      | valid accuracy: {valid_acc:.3f} \
                      | valid avg time: {valid_avg_time:.5f}s")
-        history["valid_loss"].append(valid_total_loss/len(data_loader[1].dataset))
-        history["valid_acc"].append(valid_total_correct/len(data_loader[1].dataset))
+        history["valid_loss"].append(valid_avg_loss)
+        history["valid_acc"].append(valid_acc)
         logging.info("\n")  
 
         # write into tensorboard
