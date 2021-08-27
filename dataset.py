@@ -25,7 +25,10 @@ class CIFAR10(Dataset):
         # we keep the original image size 32*32, same as experiments in ResNet paper
         # Note that after ToTensor, the value of each pixel becomes [0,1]
         # then we can apply Normalize
+        # Here the data augmentation is based on https://arxiv.org/pdf/1409.5185.pdf
         self.transformations = transforms.Compose([transforms.ToTensor(),
+        transforms.Pad(padding=4),
+        transforms.TenCrop(32, vertical_flip=False),
         transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2470, 0.2435, 0.2616))])
     
     def __getitem__(self, index):
