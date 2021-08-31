@@ -55,19 +55,19 @@ class CIFAR10(Dataset):
 
         return img, label
 
-    def __len__(self):
-        if self.data_aug:
-            return len(self.cifar_imgs) * 10  # we use TenCrop method for the data augmentation
-        else:    
-            return len(self.cifar_imgs)    
+    def __len__(self):  
+        # notice that we cannot return the length of the list after data augmentation
+        # otherwise, the sampler will sample from 1 to length after data augmentation
+        # which will cause out of range error when getting items
+        return len(self.cifar_imgs)  
     
 
 if __name__ == "__main__":
     # initialize the dataset
-    if_aug = False
+    if_aug = True
     dataset = CIFAR10(data_path="./processed_data", dataset="valid", data_aug=if_aug)
     # build the data loader
-    valid_loader = DataLoader(dataset, batch_size=10, shuffle=False)
+    valid_loader = DataLoader(dataset, batch_size=10, shuffle=True)
     # test it
     for idx, (img, label) in enumerate(valid_loader):
         if idx > 0:
