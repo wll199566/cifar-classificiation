@@ -59,10 +59,12 @@ def arg_parser():
     Parse arguments 
     """
     parser = argparse.ArgumentParser(description='hyperparameter tuning')
+    parser.add_argument("--daug", type=bool, default=False, help="data augmentation")
     # searchable hyperparameters
     parser.add_argument("--lr", type=float)
     parser.add_argument("--batch_size", type=int)
     parser.add_argument("--weight_decay", type=float, default=0)
+    parser.add_argument
 
     args = parser.parse_args()
     
@@ -85,7 +87,10 @@ weight_decay = args.weight_decay
 #for run_id, (lr, batch_size, weight_decay) in enumerate(product(*param_values_list)):
     
 ### explicit the comment name ###
-comment_name = f"_lr_{lr}_batch_{batch_size}_wd_{weight_decay}"
+if args.daug:
+    comment_name = f"_lr_{lr}_batch_{batch_size}_wd_{weight_decay}_daug"
+else:
+    comment_name = f"_lr_{lr}_batch_{batch_size}_wd_{weight_decay}"
 # initialize tensorboard writer
 writer = SummaryWriter(comment=comment_name)
 
@@ -93,7 +98,7 @@ writer = SummaryWriter(comment=comment_name)
 # initialize components
 ### initialize essentials for train and valid ###
 # dataloader
-train_loader = DataLoader(CIFAR10(data_path=data_path, dataset="train"), batch_size=batch_size, shuffle=True, pin_memory=True)
+train_loader = DataLoader(CIFAR10(data_path=data_path, dataset="train", data_aug=args.daug), batch_size=batch_size, shuffle=True, pin_memory=True)
 valid_loader = DataLoader(CIFAR10(data_path=data_path, dataset="valid"), batch_size=batch_size, shuffle=False, pin_memory=True)
 # device
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -126,12 +131,18 @@ for epoch in range(1, num_epochs+1):
     # loss and correct is not averaged due to the probable different batch size of
     # the last batch
     model.train()
+    total_count = 0  # total training images
     train_total_loss = 0  # total loss of every epoch (not average)
     train_total_correct = 0  # total correct predictions every epoch
     train_start_time = time.time()  # record train start time
     for batch, (imgs, labels) in enumerate(train_loader, 1):
         # clean up the buffered gradients
         model.zero_grad()
+        # if data augmentation, 
+        if args.daug:
+            bs, ncrops, c, h, w = img.size()
+            img = img.view(-1, c, h, w)
+            label = torch.repeat_interleave(label, 10)
         # put data into device
         imgs, labels = imgs.to(device), labels.to(device)
         # forward pass
@@ -141,12 +152,13 @@ for epoch in range(1, num_epochs+1):
         train_loss.backward()
         optimizer.step()
         # update loss and correct counts
+        train_count += len(imgs)
         train_total_loss += train_loss.item()
         train_correct = torch.sum(torch.argmax(preds, dim=1) == labels).item()
         train_total_correct += train_correct
     # write training loss and accuracy into Tensorboard
-    train_avg_loss = train_total_loss/len(train_loader.dataset)
-    train_acc = train_total_correct/len(train_loader.dataset)
+    train_avg_loss = train_total_loss/train_count
+    train_acc = train_total_correct/train_count
     writer.add_scalar("train_loss", train_avg_loss, epoch)
     writer.add_scalar("train_acc", train_acc, epoch)
     

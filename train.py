@@ -34,6 +34,8 @@ def arg_parser():
     parser.add_argument("--model", type=str)
     parser.add_argument("--n", type=int, default=3, 
     help="# of layers each feature map has")
+    parser.add_argument("--daug", action="store_true", 
+    help="using data augmentation")
     # hyperparameters
     parser.add_argument("--epochs", type=int)
     parser.add_argument("--lr", type=float)
@@ -83,7 +85,6 @@ def train_valid(args, data_loader:tuple, device, model, criterion, optimizer, sc
     # used to record the best validation accuracy
     best_val_acc = 0  
     
-
     ### each epoch ###
     for epoch in range(1, args.epochs+1):
 
@@ -94,12 +95,18 @@ def train_valid(args, data_loader:tuple, device, model, criterion, optimizer, sc
         # loss and correct is not averaged due to the probable different batch size of
         # the last batch
         model.train()
+        train_count = 0 # image counter to compute loss and accuarcy
         train_total_loss = 0  # total loss of every epoch (not average)
         train_total_correct = 0  # total correct predictions every epoch
         train_start_time = time.time()  # record train start time
         for batch, (imgs, labels) in enumerate(data_loader[0], 1):
             # clean up the buffered gradients
             model.zero_grad()
+            # if we use data augmentation, we need to deal with the dimension: 5D --> 4D
+            if args.daug:
+                bs, ncrops, c, h, w = img.size()
+                img = img.view(-1, c, h, w)
+                label = torch.repeat_interleave(label, 10)
             # put data into device
             imgs, labels = imgs.to(device), labels.to(device)
             # forward pass
@@ -108,16 +115,17 @@ def train_valid(args, data_loader:tuple, device, model, criterion, optimizer, sc
             # backward pass
             train_loss.backward()
             optimizer.step()
-            # update loss and correct counts
+            # update loss, total and correct counts
+            train_count += len(img)
             train_total_loss += train_loss.item()
             train_correct = torch.sum(torch.argmax(preds, dim=1) == labels).item()
             train_total_correct += train_correct
             if args.verbose:
                 logging.info(f"epoch {epoch} | batch {batch} | train_loss: {train_loss.item()/len(img)} | train_acc: {train_correct/len(img)}")   
         # logging loss and accuracy
-        train_avg_loss = train_total_loss/len(data_loader[0].dataset)
-        train_acc = train_total_correct/len(data_loader[0].dataset)
-        train_avg_time = (time.time()-train_start_time)/len(data_loader[0].dataset)
+        train_avg_loss = train_total_loss/train_count
+        train_acc = train_total_correct/train_count
+        train_avg_time = (time.time()-train_start_time)/train_count
         logging.info(f"train avg loss: {train_avg_loss:.3f} \
                      | train accuracy: {train_acc:.3f} \
                      | train avg time: {train_avg_time:.5f}s")
@@ -205,8 +213,8 @@ if __name__ == "__main__":
     
     ### initialize essentials for train and valid ###
     # dataloader
-    train_loader = DataLoader(CIFAR10(data_path=args.data_path, dataset="train"), batch_size=args.batch_size, shuffle=True, pin_memory=True)
-    valid_loader = DataLoader(CIFAR10(data_path=args.data_path, dataset="valid"), batch_size=args.batch_size, shuffle=False, pin_memory=True)
+    train_loader = DataLoader(CIFAR10(data_path=args.data_path, dataset="train", data_aug=args.daug), batch_size=args.batch_size, shuffle=True, pin_memory=True)
+    valid_loader = DataLoader(CIFAR10(data_path=args.data_path, dataset="valid", data_aug=False), batch_size=args.batch_size, shuffle=False, pin_memory=True)
     # device
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     # model
